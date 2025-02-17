@@ -1,14 +1,14 @@
 ## Iris data exploration
 
-1. Import data
-2. Exploration and visualization
-3. Train-test split
-4. Baseline creation for comparison
-5. ML models:
-- LogisticRegression
-- RandomForestClassification
-- Parameter tuning via RandomSearchCV
-- K-fold cross validation for LogisticRegression
+- Import data
+- Exploration and visualization
+- Train-test split
+- Baseline creation for comparison
+- ML models:
+  - LogisticRegression
+  - RandomForestClassification
+  - Parameter tuning via RandomSearchCV
+  - K-fold cross validation for LogisticRegression
 
 ### Conclusion
 
