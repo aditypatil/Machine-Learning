@@ -5,7 +5,7 @@
 3. Train-test split
 4. Baseline creation for comparison
 5. ML models:
-  a. LogisticRegression
-  b. RandomForestClassification
-  c. Parameter tuning via RandomSearchCV
-  d. K-fold cross validation for LogisticRegression
+- LogisticRegression
+- RandomForestClassification
+- Parameter tuning via RandomSearchCV
+- K-fold cross validation for LogisticRegression
