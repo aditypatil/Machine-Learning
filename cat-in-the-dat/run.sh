@@ -2,7 +2,8 @@ export TRAINING_DATA=input/train_folds.csv
 export TEST_DATA=input/test.csv
 
 export MODEL=$1
-export TARGET=price
+# export TARGET=target
+export TARGET=attribute_ids
 
 # python -m src.create_folds
 
