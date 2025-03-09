@@ -14,7 +14,7 @@ TEST_DATA = os.environ.get("TEST_DATA")
 MODEL = os.environ.get("MODEL")
 
 def predict():
-    df = pd.read_csv(TEST_DATA)  
+    df = pd.read_csv(TEST_DATA)
     test_idx = df["id"].values
     predictions = None
 
