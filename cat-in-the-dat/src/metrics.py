@@ -66,3 +66,42 @@ class ClassificationMetrics:
         neg_scores = y_pred[y_true == 0]
         ks_stat, _ = ks_2samp(pos_scores, neg_scores)
         return ks_stat
+
+
+class RegressionMetrics:
+    def __init__(self):
+        self.metrics = {
+            "mae": self._mae,
+            "mse": self._mse,
+            "rmse": self._rmse,
+            "msle": self._msle,
+            "rmsle": self._rmsle,
+            "r2": self._r2
+        }
+
+    def __call__(self, metric, y_true, y_pred):
+        if metric not in self.metrics:
+            raise Exception ("Metric not implemented")
+        return self.metrics[metric](y_true=y_true, y_pred=y_pred)
+    
+    @staticmethod
+    def _mae(y_true, y_pred): I
+        return skmetrics.mean_absolute_error(y_true, y_pred)
+    
+    @staticmethod
+    def _mse(y_true, y_pred):
+        return skmetrics.mean_squared_error (y_true, y_pred)
+    
+    def _rmse(self, y_true, y_pred) :
+        return np.sqrt(self._mse(y_true, y_pred))
+
+    @staticmethod
+    def _msle(y_true, y_pred) :
+        return skmetrics.mean_squared_log_error(y_true, y_pred)
+    
+    def _rmsle(self, y_true, y_pred):
+        return np.sqrt(self.msle(y_true, y_pred))
+    
+    @staticmethod
+    def _r2(y_true, y_pred):
+        return skmetrics.r2_score(y_true, y_pred)
