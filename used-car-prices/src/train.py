@@ -14,16 +14,11 @@ import joblib
 TRAINING_DATA = os.environ.get("TRAINING_DATA")
 TEST_DATA = os.environ.get("TEST_DATA")
 FOLD = int(os.environ.get("FOLD"))
+NUM_FOLDS = int(os.environ.get("NUM_FOLDS", 5))
 MODEL = os.environ.get("MODEL")
 TARGET = os.environ.get("TARGET")
 
-FOLD_MAPPING = {
-    0: [1, 2, 3, 4],
-    1: [0, 2, 3, 4],
-    2: [0, 1, 3, 4],
-    3: [0, 1, 2, 4],
-    4: [0, 1, 2, 3],
-}
+FOLD_MAPPING = {i: [j for j in range(NUM_FOLDS) if j != i] for i in range(NUM_FOLDS)}
 
 if __name__=='__main__':
     df = pd.read_csv(TRAINING_DATA)
@@ -49,7 +44,7 @@ if __name__=='__main__':
 
     full_data = pd.concat([train_df, valid_df, df_test])
 
-    cols = [c for c in full_data.columns if c not in ["id", "target", "kfold"]]
+    cols = [c for c in full_data.columns if c not in ["id", TARGET, "kfold"]]
     cat_feats = le.CategoricalFeatures(full_data, 
                                     categorical_features=cols, 
                                     encoding_type="auto", 
@@ -61,48 +56,32 @@ if __name__=='__main__':
     valid_df = full_data_transformed[full_data_transformed["id"].isin(valid_idx)]
     test_df = full_data_transformed[full_data_transformed["id"].isin(test_idx)]
 
-
+    print(train_df.shape)
+    print(valid_df.shape)
+    print(test_df.shape)
 
     train_df = train_df.drop(["id", TARGET, "kfold"], axis=1)
     valid_df = valid_df.drop(["id", TARGET, "kfold"], axis=1)
 
     valid_df = valid_df[train_df.columns]
 
-    # label_encoders = {}
-    # for c in train_df.columns:
-    #     lbl = preprocessing.LabelEncoder()
-    #     lbl.fit(train_df[c].astype(str).tolist() + valid_df[c].astype(str).tolist())
-    #     train_df[c] = lbl.transform(train_df[c].astype(str).tolist())
-    #     valid_df[c] = lbl.transform(valid_df[c].astype(str).tolist())
-    #     label_encoders[c] = lbl
-    
-
-
     # Data is ready to train
-    # reg = XGBRegressor(njobs=-1, n_estimators=100, learning_rate=0.1, max_depth=5, verbose=2)
-    # Define categorical columns
-
-
-
-
-    # Initialize and train CatBoost
     reg = dispatcher.MODELS[MODEL]
 
     # reg = ensemble.RandomForestRegressor(n_jobs=-1, verbose=2)
     reg.fit(train_df, ytrain)
-    pred_proba = reg.predict_proba(valid_df)[:,1]
+    # pred_proba = reg.predict_proba(valid_df)[:,1]
     preds = reg.predict(valid_df)
     print(preds[:5])
-    print(pred_proba[:5])
+    # print(pred_proba[:5])
     print(yvalid[:5])
 
-    print(f"Accuracy : {mm.ClassificationMetrics._accuracy(yvalid, preds)}")
-    print(f"Precision : {mm.ClassificationMetrics._precision(yvalid, preds)}")
-    print(f"Recall : {mm.ClassificationMetrics._recall(yvalid, preds)}")
-    print(f"F1 score : {mm.ClassificationMetrics._f1(yvalid, preds)}")
-    print(f"KS-score : {mm.ClassificationMetrics._ks_score(yvalid, pred_proba)}")
-    print(f"ROC-AUC-score : {mm.ClassificationMetrics._auc(yvalid, pred_proba)}")
-    print(f"LogLoss : {mm.ClassificationMetrics._logloss(yvalid, pred_proba)}")
+    print(f"MAE : {mm.RegressionMetrics._mae(yvalid, preds)}")
+    print(f"MSE : {mm.RegressionMetrics._mse(yvalid, preds)}")
+    print(f"RMSE : {mm.RegressionMetrics._rmse(yvalid, preds)}")
+    print(f"MSLE : {mm.RegressionMetrics._msle(yvalid, preds)}")
+    print(f"RMSLE : {mm.RegressionMetrics._rmsle(yvalid, preds)}")
+    print(f"R2 score : {mm.RegressionMetrics._r2(yvalid, preds)}")
 
     # joblib.dump(label_encoders, f"models/{MODEL}_{FOLD}_label_encoder.pkl")
     # joblib.dump(reg, f"models/{MODEL}_{FOLD}.pkl")

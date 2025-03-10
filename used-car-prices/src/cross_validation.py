@@ -80,10 +80,10 @@ class CrossValidation:
 
         return self.dataframe
 
-if __name__=="__main__":
-    # df = pd.read_csv("input/train.csv")
-    df = pd.read_csv("input/train_multilabel.csv")
-    cv = CrossValidation(df, target_cols=[TARGET], problem_type="multilabel_classification", multilabel_delimiter=" ", shuffle=True)
-    df_split = cv.split()
-    print(df_split.head(5))
-    print(df_split.kfold.value_counts())
+# if __name__=="__main__":
+#     # df = pd.read_csv("input/train.csv")
+#     df = pd.read_csv("input/train_multilabel.csv")
+#     cv = CrossValidation(df, target_cols=[TARGET], problem_type="multilabel_classification", multilabel_delimiter=" ", shuffle=True)
+#     df_split = cv.split()
+#     print(df_split.head(5))
+#     print(df_split.kfold.value_counts())

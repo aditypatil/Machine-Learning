@@ -85,23 +85,23 @@ class RegressionMetrics:
         return self.metrics[metric](y_true=y_true, y_pred=y_pred)
     
     @staticmethod
-    def _mae(y_true, y_pred): I
+    def _mae(y_true, y_pred): 
         return skmetrics.mean_absolute_error(y_true, y_pred)
-    
+
     @staticmethod
     def _mse(y_true, y_pred):
-        return skmetrics.mean_squared_error (y_true, y_pred)
-    
-    def _rmse(self, y_true, y_pred) :
+        return skmetrics.mean_squared_error(y_true, y_pred)
+
+    def _rmse(self, y_true, y_pred):
         return np.sqrt(self._mse(y_true, y_pred))
 
     @staticmethod
-    def _msle(y_true, y_pred) :
+    def _msle(y_true, y_pred):
         return skmetrics.mean_squared_log_error(y_true, y_pred)
-    
+
     def _rmsle(self, y_true, y_pred):
-        return np.sqrt(self.msle(y_true, y_pred))
-    
+        return np.sqrt(self._msle(y_true, y_pred))
+
     @staticmethod
     def _r2(y_true, y_pred):
         return skmetrics.r2_score(y_true, y_pred)
