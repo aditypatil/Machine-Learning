@@ -24,11 +24,12 @@ if __name__=='__main__':
     df = pd.read_csv(TRAINING_DATA)
     df_test = pd.read_csv(TEST_DATA)
     df_test[TARGET] = -1
-
+    print("\nMapping Folds... \n")
     train_df = df[df.kfold.isin(FOLD_MAPPING.get(FOLD))]
     valid_df = df[df.kfold==FOLD]
     df_test["kfold"] = -1
 
+    print("\nEncoding catetgorical features... \n")
     ytrain = train_df[TARGET].values
     yvalid = valid_df[TARGET].values
 
@@ -65,6 +66,8 @@ if __name__=='__main__':
 
     valid_df = valid_df[train_df.columns]
 
+    print(f"\n Starting Model Training Using {MODEL}... \n")
+
     # Data is ready to train
     reg = dispatcher.MODELS[MODEL]
 
@@ -75,6 +78,8 @@ if __name__=='__main__':
     print(preds[:5])
     # print(pred_proba[:5])
     print(yvalid[:5])
+
+    print(f"\n Evaluating Model on Validation data... \n")
 
     print(f"MAE : {mm.RegressionMetrics._mae(yvalid, preds)}")
     print(f"MSE : {mm.RegressionMetrics._mse(yvalid, preds)}")

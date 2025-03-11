@@ -18,5 +18,5 @@ if __name__ == "__main__":
     print(f"Following volume was created in each of the {NUM_FOLDS} folds:")
     print(df_split.kfold.value_counts())
     
-    df.to_csv(TRAINING_DATA, index=False)
+    df_split.to_csv(TRAINING_DATA, index=False)
 

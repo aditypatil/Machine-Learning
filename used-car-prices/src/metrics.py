@@ -92,15 +92,23 @@ class RegressionMetrics:
     def _mse(y_true, y_pred):
         return skmetrics.mean_squared_error(y_true, y_pred)
 
-    def _rmse(self, y_true, y_pred):
-        return np.sqrt(self._mse(y_true, y_pred))
+    @staticmethod
+    def _rmse(y_true, y_pred):
+        return np.sqrt(RegressionMetrics._mse(y_true, y_pred))
 
     @staticmethod
     def _msle(y_true, y_pred):
+        if np.any(y_true < 0) or np.any(y_pred < 0):
+            print("Warning: MSLE cannot be computed because values are negative.")
+            return None
         return skmetrics.mean_squared_log_error(y_true, y_pred)
 
-    def _rmsle(self, y_true, y_pred):
-        return np.sqrt(self._msle(y_true, y_pred))
+    @staticmethod
+    def _rmsle(y_true, y_pred):
+        if np.any(y_true < 0) or np.any(y_pred < 0):
+            print("Warning: RMSLE cannot be computed because values are negative.")
+            return None
+        return np.sqrt(RegressionMetrics._msle(y_true, y_pred))
 
     @staticmethod
     def _r2(y_true, y_pred):
