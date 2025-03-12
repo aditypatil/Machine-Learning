@@ -11,6 +11,7 @@
 from sklearn import preprocessing
 import pandas as pd
 import category_encoders as ce
+import numpy as np
 
 class CategoricalFeatures:
     def __init__(self, df, categorical_features, encoding_type, handle_na=False, cardinality_threshold=5):
@@ -24,6 +25,7 @@ class CategoricalFeatures:
         self.out_df = self.df.copy(deep=True)
         self.cat_feats = categorical_features
         self.enc_type = encoding_type
+        self.handle_na = handle_na
         self.cardinality_threshold = cardinality_threshold
         self.label_encoders = dict()
         self.binary_encoders = None # Store Binary Encoders if used
@@ -32,7 +34,7 @@ class CategoricalFeatures:
         self.one_hot_cols = []
 
 
-        if handle_na:
+        if self.handle_na:
             for c in self.cat_feats:
                 if pd.api.types.is_numeric_dtype(self.df[c]):  
                     # If column is numeric, keep it numeric and replace NaN with a sentinel value
@@ -54,9 +56,12 @@ class CategoricalFeatures:
     def _binary_encoding(self, cols):
         """Applies Binary Encoding (Efficient alternative to one hot in cases of high cardinality)"""
         encoder = ce.BinaryEncoder(cols=cols, return_df=True)
-        self.out_df = encoder.fit_transform(self.df)
-        self.binary_encoders = encoder  # Save encoder for later transformation
+        encoded_df = encoder.fit_transform(self.df[cols])
+        self.binary_encoders = encoder
         self.binary_cols = cols
+        # Drop original columns and concatenate encoded ones
+        self.out_df = self.df.drop(columns=cols)
+        self.out_df = pd.concat([self.out_df, encoded_df], axis=1)
         return self.out_df
     
     def _one_hot_encoding(self, cols):
@@ -87,57 +92,88 @@ class CategoricalFeatures:
         if high_cardinality_cols:
             self.df = self._binary_encoding(high_cardinality_cols)
         return self.df
-            
+
     def fit_transform(self):
+        # print(f"Columns before fit_transform: {list(self.df.columns)}")
+        self.original_cols = list(self.df.columns)  # Store original columns
         if self.enc_type == "label":
             return self._label_encoding()
         elif self.enc_type == "binary":
-            return self._binary_encoding()
+            return self._binary_encoding(self.cat_feats)
         elif self.enc_type == "onehot":
-            return self._one_hot_encoding()
+            return self._one_hot_encoding(self.cat_feats)
         elif self.enc_type == "auto":
-            return self._auto_encoding()
+            result = self._auto_encoding()
+            print(f"Columns after fit_transform: {list(result.columns)}")
+            return result
         else:
             raise Exception("Encoding type not found")
-    
+            
     def transform(self, dataframe):
-        """Applies previously fitted encoding to new data (in case of transforming test data after training)"""
-        if handle_na:
+        # print(f"Test data columns: {list(dataframe.columns)}")
+        
+        # Check for missing categorical columns
+        missing_cat_cols = [c for c in self.cat_feats if c not in dataframe.columns]
+        if missing_cat_cols:
+            print(f"Warning: Missing categorical columns in test data: {missing_cat_cols}")
+            for c in missing_cat_cols:
+                dataframe[c] = "-9999999"
+
+        # Handle NaN values if specified
+        if self.handle_na:
             for c in self.cat_feats:
-                if pd.api.types.is_numeric_dtype(self.df[c]):  
-                    # If column is numeric, keep it numeric and replace NaN with a sentinel value
-                    self.df.loc[:, c] = self.df[c].fillna(-9999999).astype(int)
+                if pd.api.types.is_numeric_dtype(dataframe[c]):
+                    dataframe.loc[:, c] = dataframe[c].fillna(-9999999).astype(int)
                 else:
-                    # If column is non-numeric (string, object, category), convert to string and fill NaN
-                    self.df.loc[:, c] = self.df[c].astype(str).fillna("-9999999")
+                    dataframe.loc[:, c] = dataframe[c].astype(str).fillna("-9999999")
+
         if self.enc_type == "label":
             for c, lbl in self.label_encoders.items():
+                dataframe.loc[:, c] = dataframe[c].map(lambda x: x if x in lbl.classes_ else "-9999999")
                 dataframe.loc[:, c] = lbl.transform(dataframe[c].values)
             return dataframe
+
         elif self.enc_type == "binary":
-            return self.binary_encoders.transform(dataframe)
+            encoded_df = self.binary_encoders.transform(dataframe[self.binary_cols])
+            dataframe = dataframe.drop(columns=self.binary_cols)
+            dataframe = pd.concat([dataframe, encoded_df], axis=1)
+            return dataframe
+
         elif self.enc_type == "onehot":
             encoded_array = self.one_hot_encoders.transform(dataframe[self.cat_feats])
-            encoded_df = pd.DataFrame(encoded_array, 
-                                      columns=self.one_hot_encoders.get_feature_names_out(self.cat_feats), 
-                                      index=dataframe.index)
-            encoded_df = encoded_df.astype(int)
+            encoded_df = pd.DataFrame(
+                encoded_array,
+                columns=self.one_hot_encoders.get_feature_names_out(self.cat_feats),
+                index=dataframe.index
+            ).astype(int)
             dataframe = dataframe.drop(columns=self.cat_feats)
             dataframe = pd.concat([dataframe, encoded_df], axis=1)
             return dataframe
+
         elif self.enc_type == "auto":
-            if self.one_hot_cols:
-                encoded_array = self.one_hot_encoders.transform(dataframe[self.one_hot_cols])
-                encoded_df = pd.DataFrame(encoded_array, 
-                                          columns=self.one_hot_encoders.get_feature_names_out(self.one_hot_cols), 
-                                          index=dataframe.index)
-                encoded_df = encoded_df.astype(int)
-                dataframe = dataframe.drop(columns=self.one_hot_cols)
+            # Apply binary encoding (if applicable)
+            if self.binary_cols is not None and len(self.binary_cols) > 0:
+                encoded_df = self.binary_encoders.transform(dataframe[self.binary_cols])
+                dataframe = dataframe.drop(columns=self.binary_cols)
                 dataframe = pd.concat([dataframe, encoded_df], axis=1)
-            if self.binary_cols:
-                dataframe = self.binary_encoders.transform(dataframe)
+
+            # Apply one-hot encoding (if applicable)
+            if self.one_hot_cols is not None and len(self.one_hot_cols) > 0:
+                one_hot_input_cols = [c for c in self.cat_feats if any(c in col for col in self.one_hot_cols)]
+                encoded_array = self.one_hot_encoders.transform(dataframe[one_hot_input_cols])
+                encoded_df = pd.DataFrame(
+                    encoded_array,
+                    columns=self.one_hot_encoders.get_feature_names_out(one_hot_input_cols),
+                    index=dataframe.index
+                ).astype(int)
+                dataframe = dataframe.drop(columns=one_hot_input_cols)
+                dataframe = pd.concat([dataframe, encoded_df], axis=1)
+
             return dataframe
-        return dataframe
+
+        else:
+            raise Exception("Encoding type not found")
+
 
 # if __name__=="__main__":
 #     import pandas as pd

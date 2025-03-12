@@ -21,16 +21,17 @@ def predict():
     for FOLD in range(5):
         encoders = joblib.load(os.path.join("models", f"{MODEL}_{FOLD}_label_encoder.pkl"))
         cols = joblib.load(os.path.join("models" ,f"{MODEL}_{FOLD}_columns.pkl"))
-        for c in cols:
-            lbl = encoders[c]
-            # df.loc[:, c] = lbl.transform(df[c].values.tolist())
-            df[c] = df[c].map(lambda s: lbl.transform([s])[0] if s in lbl.classes_ else -1)
+        # for c in cols:
+        #     lbl = encoders[c]
+        #     # df.loc[:, c] = lbl.transform(df[c].values.tolist())
+        #     df[c] = df[c].map(lambda s: lbl.transform([s])[0] if s in lbl.classes_ else -1)
+        df_test_transformed = encoders.transform(df)
 
         # Initialize testing
         reg = joblib.load(os.path.join("models", f"{MODEL}_{FOLD}.pkl"))
         
-        df = df[cols]
-        preds = reg.predict(df)[:]
+        df_test_transformed = df_test_transformed[cols]
+        preds = reg.predict(df_test_transformed)[:]
         if FOLD==0:
             predictions = preds
         else:

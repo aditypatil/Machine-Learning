@@ -190,3 +190,6 @@ models/
 .jpeg
 *.pyc
 __pycache__/
+.tsv
+.json
+.tfevents

@@ -19,4 +19,4 @@ FOLD=4 python -m src.train
 
 # python -m src.cross_validation
 
-# python -m src.predict
+python -m src.predict

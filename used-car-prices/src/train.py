@@ -10,6 +10,7 @@ from sklearn import metrics
 from xgboost import XGBRegressor
 from catboost import CatBoostRegressor
 import joblib
+from .utils import PytorchClassifierWrapper, PytorchRegressorWrapper
 
 TRAINING_DATA = os.environ.get("TRAINING_DATA")
 TEST_DATA = os.environ.get("TEST_DATA")
@@ -17,6 +18,46 @@ FOLD = int(os.environ.get("FOLD"))
 NUM_FOLDS = int(os.environ.get("NUM_FOLDS", 5))
 MODEL = os.environ.get("MODEL")
 TARGET = os.environ.get("TARGET")
+
+NN_MODELS = [
+    "PytorchSimpleNNClassifier",
+    "PytorchSimpleNNRegressor",
+    "PytorchCNN1DRegressor"
+]
+
+def train_and_predict(model_name, train_df, ytrain, valid_df, input_dim=None):
+    """
+    Train a model and make predictions, handling both scikit-learn and PyTorch models.
+    
+    Args:
+        model_name (str): Name of the model from MODELS dictionary
+        train_df (pd.DataFrame): Training features
+        ytrain (np.ndarray): Training target
+        valid_df (pd.DataFrame): Validation features
+        input_dim (int, optional): Input dimension for PyTorch models
+    
+    Returns:
+        tuple: (pred_proba, preds) for classifiers, (None, preds) for regressors
+    """
+    # Get the model
+    if model_name in NN_MODELS:
+        if input_dim is None:
+            raise ValueError(f"input_dim must be specified for PyTorch model: {model_name}")
+        reg = PytorchRegressorWrapper(dispatcher.MODELS[model_name](input_dim), input_dim=input_dim)
+    else:
+        reg = dispatcher.MODELS[model_name]
+    
+    # Train
+    reg.fit(train_df, ytrain)
+    
+    # Predict
+    if hasattr(reg, 'predict_proba'):  # For classifiers
+        pred_proba = reg.predict_proba(valid_df)[:, 1]
+        preds = reg.predict(valid_df)
+        return pred_proba, preds, reg
+    else:  # For regressors
+        preds = reg.predict(valid_df)
+        return None, preds, reg
 
 FOLD_MAPPING = {i: [j for j in range(NUM_FOLDS) if j != i] for i in range(NUM_FOLDS)}
 
@@ -68,13 +109,18 @@ if __name__=='__main__':
 
     print(f"\n Starting Model Training Using {MODEL}... \n")
 
+    input_dim = train_df.shape[1] if MODEL in NN_MODELS else None
+
+    # Train and predict
+    pred_proba, preds, reg = train_and_predict(MODEL, train_df, ytrain, valid_df, input_dim)
+
     # Data is ready to train
-    reg = dispatcher.MODELS[MODEL]
+    # reg = dispatcher.MODELS[MODEL]
 
     # reg = ensemble.RandomForestRegressor(n_jobs=-1, verbose=2)
-    reg.fit(train_df, ytrain)
+    # reg.fit(train_df, ytrain)
     # pred_proba = reg.predict_proba(valid_df)[:,1]
-    preds = reg.predict(valid_df)
+    # preds = reg.predict(valid_df)
     print(preds[:5])
     # print(pred_proba[:5])
     print(yvalid[:5])
@@ -88,6 +134,6 @@ if __name__=='__main__':
     print(f"RMSLE : {mm.RegressionMetrics._rmsle(yvalid, preds)}")
     print(f"R2 score : {mm.RegressionMetrics._r2(yvalid, preds)}")
 
-    # joblib.dump(label_encoders, f"models/{MODEL}_{FOLD}_label_encoder.pkl")
-    # joblib.dump(reg, f"models/{MODEL}_{FOLD}.pkl")
-    # joblib.dump(train_df.columns, f"models/{MODEL}_{FOLD}_columns.pkl")
+    joblib.dump(cat_feats, f"models/{MODEL}_{FOLD}_label_encoder.pkl")
+    joblib.dump(reg, f"models/{MODEL}_{FOLD}.pkl")
+    joblib.dump(train_df.columns, f"models/{MODEL}_{FOLD}_columns.pkl")
