@@ -184,12 +184,14 @@ models/
 *.pth 
 
 #random 
-.log
-.DS_Store
-.png
-.jpeg
+*.log
+*.DS_Store
+*.png
+*.jpeg
 *.pyc
 __pycache__/
-.tsv
-.json
+*.tsv
+*.json
 .tfevents
+catboost_info/
+
