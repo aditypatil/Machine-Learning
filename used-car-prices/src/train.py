@@ -4,12 +4,14 @@ import numpy as np
 from . import dispatcher
 from . import metrics as mm
 from . import categorical as le
+from . import param_tuning
 from sklearn import ensemble 
 from sklearn import preprocessing
 from sklearn import metrics
 from xgboost import XGBRegressor
 from catboost import CatBoostRegressor
 import joblib
+import json
 from .utils import PytorchClassifierWrapper, PytorchRegressorWrapper
 
 TRAINING_DATA = os.environ.get("TRAINING_DATA")
@@ -39,13 +41,37 @@ def train_and_predict(model_name, train_df, ytrain, valid_df, input_dim=None):
     Returns:
         tuple: (pred_proba, preds) for classifiers, (None, preds) for regressors
     """
+    # Get best parameters
+    def load_best_params(model_name):
+        try:
+            with open(f"model/best_params_{model_name}.json", "r") as f:
+                best_params = json.load(f)
+            print(f"Loaded best params for {model_name}: {best_params}")
+            return best_params
+        except FileNotFoundError:
+            print(f"No saved best params found for {model_name}. Using default settings.")
+            return None
     # Get the model
     if model_name in NN_MODELS:
         if input_dim is None:
             raise ValueError(f"input_dim must be specified for PyTorch model: {model_name}")
-        reg = PytorchRegressorWrapper(dispatcher.MODELS[model_name](input_dim), input_dim=input_dim)
+        reg = PytorchRegressorWrapper(
+            pytorch_model_class=dispatcher.MODELS[model_name],  # Pass the class, not an instance
+            input_dim=input_dim,
+            epochs=20,
+            batch_size=32,
+            lr=0.002
+        )
     else:
         reg = dispatcher.MODELS[model_name]
+        print(f"Tuning {model_name}...")
+        tuner = param_tuning.ParamTuner(model_name=model_name, optimization_method="RandomSearchCV", task="regression")
+        train_full = pd.concat([train_df.reset_index(drop=True), pd.Series(ytrain, name=TARGET).reset_index(drop=True)], axis=1)
+        best_params, _ = tuner._optimize(train_full, n_iter=30, cv=2)
+        # best_params = load_best_params("XGBRegressor")
+        print(f"Best parameters found: {best_params}")
+        if best_params:
+            reg.set_params(**best_params)
     
     # Train
     reg.fit(train_df, ytrain)

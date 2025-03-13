@@ -20,8 +20,8 @@ class PytorchClassifierWrapper(BaseEstimator, ClassifierMixin):
         self.model_.to(device)
         
         # Convert data to tensors
-        X_tensor = torch.FloatTensor(X).to(device)
-        y_tensor = torch.LongTensor(y).to(device)
+        X_tensor = torch.FloatTensor(X.to_numpy()).to(device)
+        y_tensor = torch.LongTensor(y.to_numpy()).to(device)
         
         # Setup optimizer and loss
         optimizer = torch.optim.Adam(self.model_.parameters(), lr=self.lr)
@@ -44,7 +44,7 @@ class PytorchClassifierWrapper(BaseEstimator, ClassifierMixin):
     def predict_proba(self, X):
         self.model_.eval()
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        X_tensor = torch.FloatTensor(X).to(device)
+        X_tensor = torch.FloatTensor(X.to_numpy()).to(device)
         
         with torch.no_grad():
             outputs = self.model_(X_tensor)
@@ -70,8 +70,12 @@ class PytorchRegressorWrapper(BaseEstimator, RegressorMixin):
         self.model_.to(device)
         
         # Convert data to tensors
-        X_tensor = torch.FloatTensor(X).to(device)
-        y_tensor = torch.FloatTensor(y).reshape(-1, 1).to(device)
+        X_tensor = torch.FloatTensor(X.to_numpy()).to(device)
+        if hasattr(y,'to_numpy'):
+            y_np = y.to_numpy()
+        else:
+            y_np = y
+        y_tensor = torch.FloatTensor(y_np).reshape(-1, 1).to(device)
         
         # Setup optimizer and loss
         optimizer = torch.optim.Adam(self.model_.parameters(), lr=self.lr)
@@ -94,7 +98,7 @@ class PytorchRegressorWrapper(BaseEstimator, RegressorMixin):
     def predict(self, X):
         self.model_.eval()
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        X_tensor = torch.FloatTensor(X).to(device)
+        X_tensor = torch.FloatTensor(X.to_numpy()).to(device)
         
         with torch.no_grad():
             outputs = self.model_(X_tensor)
