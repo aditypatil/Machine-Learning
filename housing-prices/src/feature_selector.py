@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import pandas as pd
+from . import dispatcher
 from sklearn.feature_selection import VarianceThreshold, RFE, SelectFromModel
 from sklearn.feature_selection import SelectKBest, f_classif, f_regression, chi2
 from sklearn.feature_selection import mutual_info_classif, mutual_info_regression
@@ -8,6 +9,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import Lasso, LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 import warnings
+
+MODEL = os.environ.get("MODEL", "Lasso")
 
 class FeatureSelector:    
     def __init__(self, 
@@ -36,18 +39,19 @@ class FeatureSelector:
         self.correlation_threshold = correlation_threshold
         self.auto_select = auto_select
         self.scaler = StandardScaler()
+        self.model = dispatcher.MODELS[MODEL]
         
         # Model selection
-        if self.problem_type == "classification":
-        model_name = os.getenv('MODEL', 'random_forest')
-        if model is None:
-            if model_name.lower() == 'lasso':
-                self.model = Lasso() if problem_type == 'regression' else LogisticRegression(penalty='l1', solver='liblinear')
-            else:
-                self.model = (RandomForestRegressor() if problem_type == 'regression' 
-                            else RandomForestClassifier())
-        else:
-            self.model = model
+        # if self.problem_type == "classification":
+        #     model_name = MODEL
+        # if model is None:
+        #     if model_name.lower() == 'Lasso':
+        #         self.model = Lasso() if problem_type == 'regression' else LogisticRegression(penalty='l1', solver='liblinear')
+        #     else:
+        #         self.model = (RandomForestRegressor() if problem_type == 'regression' 
+        #                     else RandomForestClassifier())
+        # else:
+        #     self.model = model
             
         self.selectors = {}
         self.feature_mask = None
@@ -155,7 +159,6 @@ class FeatureSelector:
         elif 'univariate' in method_results:
             self.feature_importance = dict(zip(feature_names, 
                                              method_results['univariate']['selector'].scores_))
-            
         return self
     
     def transform(self, X):
@@ -187,11 +190,8 @@ class FeatureSelector:
             importance_df.to_csv(f"{path}_importance.csv", index=False)
 
 # Example usage
-if __name__ == "__main__":
-    from sklearn.datasets import fetch_california_housing
-    
+if __name__ == "__main__":    
     # Load data
-    data = fetch_california_housing()
     X, y = data.data, data.target
     feature_names = data.feature_names
     
