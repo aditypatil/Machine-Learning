@@ -105,8 +105,9 @@ class RegressionMetrics:
 
     @staticmethod
     def _rmsle(y_true, y_pred):
-        if np.any(y_true < 0) or np.any(y_pred < 0):
-            print("Warning: RMSLE cannot be computed because values are negative.")
+        y_pred = np.clip(y_pred, 0, None)
+        if np.any(y_true < 0):
+            print("Warning: RMSLE cannot be computed because y_true contains negative values.")
             return None
         return np.sqrt(RegressionMetrics._msle(y_true, y_pred))
 

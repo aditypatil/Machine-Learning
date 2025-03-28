@@ -10,8 +10,10 @@
 from sklearn import model_selection
 import pandas as pd
 import os
+import numpy as np
 
 TARGET = os.environ.get("TARGET")
+
 
 
 class CrossValidation:
@@ -21,9 +23,9 @@ class CrossValidation:
         target_cols, 
         shuffle,
         problem_type="binary_classification",
-        multilabel_delimiter = ",",
-        num_folds = 5,
-        random_state = 42
+        multilabel_delimiter=",",
+        num_folds=5,
+        random_state=42
     ):
         self.dataframe = df
         self.target_cols = target_cols
@@ -35,29 +37,45 @@ class CrossValidation:
         self.multilabel_delimiter = multilabel_delimiter
 
         if self.shuffle is True:
-            self.dataframe = self.dataframe.sample(frac=1).reset_index(drop=True)
+            self.dataframe = self.dataframe.sample(frac=1, random_state=self.random_state).reset_index(drop=True)
 
         self.dataframe["kfold"] = -1
-
 
     def split(self):
         if self.problem_type in ["binary_classification", "multiclass_classification"]:
             target = self.target_cols[0]
-            unique_values = self.dataframe[self.target_cols[0]].nunique()
+            unique_values = self.dataframe[target].nunique()
             if unique_values == 1:
                 raise Exception("Only one unique value found!")
             elif unique_values > 1:
-                kf = model_selection.StratifiedKFold(n_splits=self.num_folds, 
-                                                    shuffle=False)
-                for fold, (train_idx, val_idx) in enumerate(kf.split(X=self.dataframe, y=self.dataframe[TARGET].values)):
+                kf = model_selection.StratifiedKFold(
+                    n_splits=self.num_folds, 
+                    shuffle=self.shuffle,
+                    random_state=self.random_state if self.shuffle else None
+                )
+                for fold, (train_idx, val_idx) in enumerate(kf.split(X=self.dataframe, y=self.dataframe[target].values)):
                     self.dataframe.loc[val_idx, 'kfold'] = fold
         elif self.problem_type in ["single_col_regression", "multi_col_regression"]:
-            if self.num_targets != 1 and self.problem_type=="single_col_regression":
+            if self.num_targets != 1 and self.problem_type == "single_col_regression":
                 raise Exception("Invalid number of targets for this problem type")
-            if self.num_targets < 2 and self.problem_type=="multi_col_regression":
+            if self.num_targets < 2 and self.problem_type == "multi_col_regression":
                 raise Exception("Invalid number of targets for this problem type")
-            kf = model_selection.KFold(n_splits=self.num_folds)
-            for fold, (train_idx, val_idx) in enumerate(kf.split(X=self.dataframe)):
+            
+            # Bin the target variable for stratification
+            target = self.target_cols[0]
+            n_bins = min(10, self.dataframe[target].nunique())  # Adjust number of bins as needed
+            binned_target = pd.qcut(self.dataframe[target], q=n_bins, duplicates='drop')
+            
+            # Convert binned intervals to integer labels
+            binned_target_labels = binned_target.cat.codes
+            
+            # Use StratifiedKFold with binned target labels
+            kf = model_selection.StratifiedKFold(
+                n_splits=self.num_folds,
+                shuffle=self.shuffle,
+                random_state=self.random_state if self.shuffle else None
+            )
+            for fold, (train_idx, val_idx) in enumerate(kf.split(X=self.dataframe, y=binned_target_labels)):
                 self.dataframe.loc[val_idx, 'kfold'] = fold
 
         elif self.problem_type.startswith("holdout_"):
@@ -73,8 +91,6 @@ class CrossValidation:
             kf = model_selection.StratifiedKFold(n_splits=self.num_folds)
             for fold, (train_idx, val_idx) in enumerate(kf.split(X=self.dataframe, y=targets)):
                 self.dataframe.loc[val_idx, 'kfold'] = fold
-
-
         else:
             raise Exception("Problem type unknown!")
 

@@ -63,10 +63,10 @@ MODELS = {
         enable_categorical=True, random_state=42
     ),
     "LGBMRegressor": LGBMRegressor(
-        n_estimators=100, max_depth=7, learning_rate=0.1, num_leaves=31, verbose=2, random_state=42
+        n_estimators=100, max_depth=7, learning_rate=0.1, num_leaves=31, verbose=0, random_state=42
     ),
     "CatBoostRegressor": CatBoostRegressor(
-        iterations=1000, learning_rate=0.1, depth=6, verbose=100, random_state=42
+        iterations=1000, learning_rate=0.1, depth=6, verbose=0, random_state=42
     ),
     "ExtraTreesRegressor": ensemble.ExtraTreesRegressor(
         n_estimators=200, max_depth=10, max_features="sqrt", n_jobs=-1, random_state=42, verbose=2

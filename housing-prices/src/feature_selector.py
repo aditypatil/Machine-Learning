@@ -12,7 +12,7 @@ import warnings
 
 MODEL = os.environ.get("MODEL", "Lasso")
 
-class FeatureSelector:    
+class FeatureSelector:
     def __init__(self, 
                  problem_type='classification',
                  n_features=None,
@@ -63,13 +63,20 @@ class FeatureSelector:
     
     def _correlation_selection(self, X, feature_names):
         if isinstance(X, np.ndarray):
+            if len(feature_names) != X.shape[1]:
+                raise ValueError("Length of feature_names does not match number of columns in X")
             X = pd.DataFrame(X, columns=feature_names)
+        elif not isinstance(X, pd.DataFrame):
+            raise ValueError("X must be a pandas DataFrame or NumPy array")
+        # Check for numeric data
+        if not X.dtypes.all() in [np.float64, np.int64, np.float32, np.int32]:
+            raise ValueError("All columns in X must be numeric for correlation selection")
         corr_matrix = X.corr().abs()
         upper_tri = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
         to_drop = [column for column in upper_tri.columns 
                   if any(upper_tri[column] > self.correlation_threshold)]
         keep_mask = ~X.columns.isin(to_drop)
-        return X.loc[:, keep_mask].values, keep_mask.values
+        return X.loc[:, keep_mask].to_numpy(), keep_mask.to_numpy()
     
     def _univariate_selection(self, X, y):
         scoring = {
@@ -114,6 +121,7 @@ class FeatureSelector:
         """
         Fit the feature selector to the data.
         """
+        print("fitting feature selector")
         X = np.asarray(X)
         y = np.asarray(y)
         X_scaled = self.scaler.fit_transform(X)
@@ -163,6 +171,7 @@ class FeatureSelector:
     
     def transform(self, X):
         """Transform data using selected features."""
+        print("transforming using feature selector")
         if self.feature_mask is None:
             raise ValueError("Fit the selector first.")
         X_scaled = self.scaler.transform(X)
@@ -190,22 +199,22 @@ class FeatureSelector:
             importance_df.to_csv(f"{path}_importance.csv", index=False)
 
 # Example usage
-if __name__ == "__main__":    
+# if __name__ == "__main__":    
     # Load data
-    X, y = data.data, data.target
-    feature_names = data.feature_names
+    # X, y = data.data, data.target
+    # feature_names = data.feature_names
     
-    # Initialize selector
-    selector = CustomFeatureSelector(
-        problem_type='regression',
-        selection_methods=['variance', 'correlation', 'univariate', 'rfe'],
-        n_features=None,  # Auto-select
-        auto_select=True
-    )
+    # # Initialize selector
+    # selector = CustomFeatureSelector(
+    #     problem_type='regression',
+    #     selection_methods=['variance', 'correlation', 'univariate', 'rfe'],
+    #     n_features=None,  # Auto-select
+    #     auto_select=True
+    # )
     
-    # Fit and transform
-    X_transformed = selector.fit_transform(X, y, feature_names)
-    selected_features = selector.get_feature_names(feature_names)
+    # # Fit and transform
+    # X_transformed = selector.fit_transform(X, y, feature_names)
+    # selected_features = selector.get_feature_names(feature_names)
     
-    print(f"Selected features: {selected_features}")
-    selector.save_results()
+    # print(f"Selected features: {selected_features}")
+    # selector.save_results()

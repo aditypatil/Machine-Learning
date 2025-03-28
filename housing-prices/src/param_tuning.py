@@ -10,16 +10,17 @@ import os
 import scipy.stats as stats
 import joblib
 import json
+from sklearn.metrics import make_scorer
 
-TRAINING_DATA = os.environ.get("TRAINING_DATA")
-TEST_DATA = os.environ.get("TEST_DATA")
+# TRAINING_DATA = os.environ.get("TRAINING_DATA")
+# TEST_DATA = os.environ.get("TEST_DATA")
 # FOLD = int(os.environ.get("FOLD"))
 # NUM_FOLDS = int(os.environ.get("NUM_FOLDS", 5))
-MODEL = os.environ.get("MODEL")
-TARGET = os.environ.get("TARGET")
+# MODEL = os.environ.get("MODEL")
+# TARGET = os.environ.get("TARGET")
 
 class ParamTuner():
-    def __init__(self, model_name, task="regression", optimization_method="RandomSearchCV", test_size=0.2, random_state=42):
+    def __init__(self, model_name, task="regression", optimization_method="RandomSearchCV", test_size=0.2, random_state=42, target='target'):
         self.model_name = model_name
         self.method = optimization_method
         self.test_size = test_size
@@ -27,13 +28,15 @@ class ParamTuner():
         self.best_model = None
         self.best_params = None
         self.task = task
+        self.target = target
+        self.scorer = make_scorer(mm.RegressionMetrics._rmsle)
 
     def _optimize(self, dataframe, n_iter=10, cv=5, scoring=None):
-        # print(f"Columns in dataframe just after _optimize call: {list(dataframe.columns)}")
+        # print(f"Columns in dataframe just after _optimize call: {len(dataframe.columns)}")
         best_score = -np.inf
-        X = dataframe.drop(columns=[TARGET]).values
+        X = dataframe.drop(columns=[self.target]).values
         # print(f"Columns in dataframe after defining X _optimize call: {list(dataframe.columns)}")
-        y = dataframe[TARGET].values
+        y = dataframe[self.target].values
         X_train, X_test, y_train, y_test = model_selection.train_test_split(X, y, test_size=self.test_size, random_state=self.random_state)
         model = dispatcher.MODELS[self.model_name]
         if self.method == "RandomSearchCV":
