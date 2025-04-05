@@ -214,7 +214,7 @@ class Preprocessor(BaseEstimator, TransformerMixin):
         # Numeric transformer pipeline
         self.numeric_transformer = (
             Pipeline([
-                ('power', PowerTransformer(method='yeo-johnson', standardize=True)),
+                # ('power', PowerTransformer(method='yeo-johnson', standardize=True)),
                 ('scaler', StandardScaler())
             ]) if self.numeric_cols else None
         )
